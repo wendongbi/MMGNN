@@ -5,15 +5,15 @@
 
 
 # # For social networks
-python3 main_citation.py --dataset Simmons81 --hidden 256  --num_epoch 600 --layer 2
-# python3 main_citation.py --dataset Hamilton46 --hidden 256  --num_epoch 600 --layer 2
-# python3 main_citation.py --dataset GWU54 --hidden 256  --num_epoch 600 --layer 2
-# python3 main_citation.py --dataset Howard90 --hidden 256  --num_epoch 600 --layer 2
-# python3 main_citation.py --dataset Northeastern19 --hidden 256  --num_epoch 600 --layer 2
-# python3 main_citation.py --dataset UGA50 --hidden 256  --num_epoch 600 --layer 2
+python3 main.py --dataset Simmons81 --hidden 256  --num_epoch 600 --layer 2
+# python3 main.py --dataset Hamilton46 --hidden 256  --num_epoch 600 --layer 2
+# python3 main.py --dataset GWU54 --hidden 256  --num_epoch 600 --layer 2
+# python3 main.py --dataset Howard90 --hidden 256  --num_epoch 600 --layer 2
+# python3 main.py --dataset Northeastern19 --hidden 256  --num_epoch 600 --layer 2
+# python3 main.py --dataset UGA50 --hidden 256  --num_epoch 600 --layer 2
 
 
 # # For citation networks
-# python3 main_citation.py --dataset pubmed --hidden 256 --lamda 0.4 --wd1 5e-4 --num_epoch 600
-# python3 main_citation.py --dataset citeseer --hidden 256  --num_epoch 600
-# python3 main_citation.py --dataset cora --test --num_epoch 400 --hidden 64
+# python3 main.py --dataset pubmed --hidden 256 --lamda 0.4 --wd1 5e-4 --num_epoch 600
+# python3 main.py --dataset citeseer --hidden 256  --num_epoch 600
+# python3 main.py --dataset cora --test --num_epoch 400 --hidden 64
