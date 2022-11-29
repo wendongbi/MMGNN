@@ -9,8 +9,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from utils import *
 import sys
-sys.path.append('../models/torch')
-from model import MMGNN
 import uuid
 
 
@@ -63,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.6)
     parser.add_argument('--patience', type=int, default=100)
     parser.add_argument('--data_dir', default='../dataset', help='dateset directory')
+    parser.add_argument('--implementation', default='torch', choices=['torch', 'pyg'], help='dateset directory')
     parser.add_argument('--dataset', default='cora', help='dateset name')
     parser.add_argument('--gpu', type=int, default=0, help='device id')
     parser.add_argument('--alpha', type=float, default=0.1, help='alpha_l')
@@ -72,7 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='attention', help='mode to combine different moments feats, choose from mlp or attention')
     parser.add_argument('--auto_fixed_seed', action='store_true', help='fixed random seed of each run by run_id(0, 1, 2, ...)')
     parser.add_argument('--use_adj_norm', action='store_true', help='whether use adj normalization(row or symmetric norm).')
-    parser.add_argument('--split_idx', type=int, default=0, help='split idx of multi-train/val/test mask dataset')
+    parser.add_argument('--split_idx', type=int, default=2, help='split idx of multi-train/val/test mask dataset')
     parser.add_argument('--use_center_moment', action='store_true', help='whether to use center moment for MMGNN')
     parser.add_argument('--use_norm', action='store_true', help='whether to use layer norm for MMGNN')
     args = parser.parse_args()
@@ -83,6 +82,7 @@ if __name__ == '__main__':
 
     # Load data
     adj, features, labels,idx_train,idx_val,idx_test = load_dataset(args)
+    print('Train_num:{} | Val_num:{} | Test_num:{}'.format(len(idx_train), len(idx_val), len(idx_test)))
     cudaid = "cuda:"+str(args.gpu)
     device = torch.device(cudaid)
     features = features.to(device)
@@ -93,8 +93,10 @@ if __name__ == '__main__':
         os.makedirs('./ckpt')
         
     print(cudaid,checkpt_file)
-
-    model = MMGNN(nfeat=features.shape[1],
+    sys.path.append('../models/{}'.format(args.implementation))
+    from model import MMGNN
+    if args.implementation == 'torch':
+        model = MMGNN(nfeat=features.shape[1],
                     nlayers=args.layer,
                     nhidden=args.hidden,
                     nclass=int(labels.max()) + 1,
@@ -103,10 +105,15 @@ if __name__ == '__main__':
                     alpha=args.alpha,
                     use_center_moment=args.use_center_moment,
                     moment=args.moment).to(device)
-    optimizer = optim.Adam([
+        optimizer = optim.Adam([
                             {'params':model.params1,'weight_decay':args.wd1},
                             {'params':model.params2,'weight_decay':args.wd2},
                             ],lr=args.lr)
+        
+    else:
+        model = MMGNN(features.shape[1], args.layer, args.hidden, int(labels.max()) + 1, features.shape[0], args.moment, use_norm=args.use_norm,  mode=args.mode, use_adj_norm=args.use_adj_norm, use_center_moment=args.use_center_moment, device=device).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd2)
+        
     t_total = time.time()
     bad_counter = 0
     best = float('inf')

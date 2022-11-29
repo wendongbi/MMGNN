@@ -181,11 +181,18 @@ def load_dataset(args):
     else:
         dataset = pyg_dataset(args)
         data = dataset[0]
-        adj = scipy.sparse.csr_matrix((np.ones(data.edge_index.shape[1]), data.edge_index), shape=(data.num_nodes, data.num_nodes))
-        adj = sys_normalized_adjacency(adj)
-        adj = sparse_mx_to_torch_sparse_tensor(adj)
+        if args.implementation == 'torch':
+            adj = scipy.sparse.csr_matrix((np.ones(data.edge_index.shape[1]), data.edge_index), shape=(data.num_nodes, data.num_nodes))
+            adj = sys_normalized_adjacency(adj)
+            adj = sparse_mx_to_torch_sparse_tensor(adj)
+        else:
+            adj = data.edge_index.long()
         features = data.x
         labels = data.y
+        if len(data.train_mask.shape) > 1:
+            data.train_mask = data.train_mask[:, args.split_idx]
+            data.val_mask = data.val_mask[:, args.split_idx]
+            data.test_mask = data.test_mask[:, args.split_idx]
         idx_train = torch.where(data.train_mask)[0]
         idx_val = torch.where(data.val_mask)[0]
         idx_test = torch.where(data.test_mask)[0]
@@ -201,14 +208,14 @@ def load_dataset_citation(dataset_str="cora"):
     names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'graph']
     objects = []
     for i in range(len(names)):
-        with open("data/ind.{}.{}".format(dataset_str.lower(), names[i]), 'rb') as f:
+        with open("../dataset/citation/ind.{}.{}".format(dataset_str.lower(), names[i]), 'rb') as f:
             if sys.version_info > (3, 0):
                 objects.append(pkl.load(f, encoding='latin1'))
             else:
                 objects.append(pkl.load(f))
 
     x, y, tx, ty, allx, ally, graph = tuple(objects)
-    test_idx_reorder = parse_index_file("data/ind.{}.test.index".format(dataset_str))
+    test_idx_reorder = parse_index_file("../dataset/citation/ind.{}.test.index".format(dataset_str))
     test_idx_range = np.sort(test_idx_reorder)
 
     if dataset_str == 'citeseer':

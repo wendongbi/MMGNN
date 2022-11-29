@@ -10,7 +10,7 @@ from utils import adj_norm
 
 
 class MMGNN(torch.nn.Module):
-    def __init__(self, dataset, layer_num=2, moment=1, hidden=16, mode='sum', use_norm=False, use_adj_norm=False, use_adj_cache=True, device=None, use_center_moment=None):
+    def __init__(self,  nfeat, nlayers, nhidden, nclass, N, moment=1, mode='sum', use_norm=False, use_adj_norm=False, use_adj_cache=True, device=None, use_center_moment=None):
         super(MMGNN, self).__init__()
         self.convs = nn.ModuleList()
         self.adj_t_cache = None
@@ -21,18 +21,18 @@ class MMGNN(torch.nn.Module):
         self.out_layer_mode = mode
         self.out_layer_moment = moment
 
-        if layer_num == 1:
+        if nlayers == 1:
             self.convs.append(
-                MM_Conv(dataset.num_features, dataset.num_classes, use_norm=use_norm, moment=moment, mode=mode,  N=dataset[0].x.shape[0], use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment)
+                MM_Conv(nfeat, nclass, use_norm=use_norm, moment=moment, mode=mode,  N=N, use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment)
             )
         else:
-            for num in range(layer_num):
+            for num in range(nlayers):
                 if num == 0:
-                    self.convs.append(MM_Conv(dataset.num_features, hidden, use_norm=use_norm, moment=moment, mode=mode,  N=dataset[0].x.shape[0], use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment))
-                elif num == layer_num - 1:
-                    self.convs.append(MM_Conv(hidden, dataset.num_classes, use_norm=use_norm, moment=self.out_layer_moment, mode=self.out_layer_mode,  N=dataset[0].x.shape[0], use_adj_norm=self.use_adj_norm,  device=device, use_center_moment=use_center_moment))
+                    self.convs.append(MM_Conv(nfeat, nhidden, use_norm=use_norm, moment=moment, mode=mode,  N=N, use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment))
+                elif num == nlayers - 1:
+                    self.convs.append(MM_Conv(nhidden, nclass, use_norm=use_norm, moment=self.out_layer_moment, mode=self.out_layer_mode,  N=N, use_adj_norm=self.use_adj_norm,  device=device, use_center_moment=use_center_moment))
                 else:
-                    self.convs.append(MM_Conv(hidden, hidden, use_norm=use_norm, moment=moment, mode=mode,  N=dataset[0].x.shape[0], use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment))
+                    self.convs.append(MM_Conv(nhidden, nhidden, use_norm=use_norm, moment=moment, mode=mode,  N=N, use_adj_norm=self.use_adj_norm, device=device, use_center_moment=use_center_moment))
     def reset_parameters(self):
         for conv in self.convs:
             conv.reset_parameters()
@@ -56,10 +56,10 @@ class MMGNN(torch.nn.Module):
                 x, moment_list = conv(x, self.adj_t_cache, edge_row_col=edge_index, thres_deg=0)
                 x = F.dropout(F.relu(x), p=0.5, training=self.training)
         return attention_bucket
-    def forward(self, data, get_moment=False):
-        x, edge_index = data.x, data.edge_index
+    def forward(self, x, edge_index, get_moment=False):
+        # x, edge_index = data.x, data.edge_index
         if isinstance(edge_index, torch.Tensor) and (self.adj_t_cache == None or not self.use_adj_cache):
-            self.adj_t_cache = torch_sparse.SparseTensor(row=edge_index[1], col=edge_index[0], value=torch.ones(data.edge_index.shape[1]).to(edge_index.device), sparse_sizes=(x.shape[0], x.shape[0]))
+            self.adj_t_cache = torch_sparse.SparseTensor(row=edge_index[1], col=edge_index[0], value=torch.ones(edge_index.shape[1]).float().to(edge_index.device), sparse_sizes=(x.shape[0], x.shape[0]))
             if self.use_adj_norm:
                 self.adj_t_cache = adj_norm(self.adj_t_cache, norm='row')
         if get_moment:
